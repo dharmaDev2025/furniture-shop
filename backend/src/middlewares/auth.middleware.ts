@@ -8,7 +8,7 @@ interface JwtPayload{
 
 }
 
-export const protect=async(req:Request,res:Response,next:NextFunction):Promise<void>=>{
+export const protect=async(req:AuthRequest,res:Response,next:NextFunction):Promise<void>=>{
     try {
         const authHeader=req.headers.authorization;
         if(!authHeader||!authHeader.startsWith("Bearer ")){
@@ -52,6 +52,10 @@ export const protect=async(req:Request,res:Response,next:NextFunction):Promise<v
       });
       return;
     }
+   req.user = {
+      id: user.id,
+      role: user.role,
+    };
 
     next();
 
