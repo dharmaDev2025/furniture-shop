@@ -106,3 +106,180 @@ export const createProduct = async (
     });
   }
 };
+export const getAllProducts=async(req:Request,res:Response):Promise<void>=>{
+  try {
+    const products=await prisma.product.findMany({
+      where:{
+        isActive:true,
+      },
+
+      orderBy:{
+        createdAt:"desc"
+      }
+    });
+    res.status(200).json({
+      success:true,
+      count:products.length,
+      products,
+    });
+
+    
+  } catch (error) {
+     console.error("Get products error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+    
+  }
+export const getProductById=async(
+  req:Request,res:Response
+):Promise<void>=>{
+  try {
+    const id=req.params.id as string;
+    const product=await prisma.product.findFirst({
+      where:{
+        id:id,
+        isActive:true,
+
+      }
+    })
+    
+  } catch (error) {
+    
+  }
+}
+export const updateProduct = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+
+    const {
+      name,
+      description,
+      price,
+      category,
+      stock,
+      material,
+      color,
+      dimensions,
+    } = req.body;
+
+    // Check product exists
+    const existingProduct = await prisma.product.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!existingProduct) {
+      res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+      return;
+    }
+
+    // Create update object
+    const updateData: any = {};
+
+    if (name !== undefined) {
+      updateData.name = name;
+    }
+
+    if (description !== undefined) {
+      updateData.description = description;
+    }
+
+    if (price !== undefined) {
+      updateData.price = Number(price);
+    }
+
+    if (category !== undefined) {
+      updateData.category = category;
+    }
+
+    if (stock !== undefined) {
+      updateData.stock = Number(stock);
+    }
+
+    if (material !== undefined) {
+      updateData.material = material;
+    }
+
+    if (color !== undefined) {
+      updateData.color = color;
+    }
+
+    if (dimensions !== undefined) {
+      updateData.dimensions = dimensions;
+    }
+
+    // Update product
+    const updatedProduct = await prisma.product.update({
+      where: {
+        id: id,
+      },
+      data: updateData,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Product updated successfully",
+      product: updatedProduct,
+    });
+
+  } catch (error) {
+    console.error("Update product error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+}
+export const deactivateProduct=async(req:Request,res:Response):Promise<void>=>{
+  try {
+    const id=req.params.id as string;
+
+    const product=await prisma.product.findUnique({
+      where:{
+        id,
+      }
+    });
+    if(!product){
+      res.status(404).json({
+        success:false,
+        message:"product not found"
+      })
+      return;
+
+    }
+    const updateProduct=await prisma.product.update({
+      where:{
+        id,
+      },
+      data:{
+        isActive:false
+      }
+    })
+       res.status(200).json({
+      success: true,
+      message: "Product deactivated successfully",
+      product: updateProduct,
+    });
+    
+  } catch (error) {
+     console.error("Deactivate product error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+    
+  }
