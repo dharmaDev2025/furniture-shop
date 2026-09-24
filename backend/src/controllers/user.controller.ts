@@ -123,3 +123,96 @@ const updatedUser = await prisma.user.update({
         
     }
 }
+export const updateAddress=async(req:AuthRequest,res:Response):Promise<void>=>{
+  try {
+    const userId = req.user?.id;
+      if (!userId) {
+      res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+      return;
+    }
+
+    const{address,city,state,pincode,latitude,longitude}=req.body;
+    if (
+      !address ||
+      !city ||
+      !state ||
+      !pincode ||
+      latitude === undefined ||
+      longitude === undefined
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "Address and location details are required",
+      });
+      return;
+    }
+
+    //validate the cordinates
+      if (
+      typeof latitude !== "number" ||
+      typeof longitude !== "number" ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid latitude or longitude",
+      });
+      return;
+    }
+
+    //update address
+    const updatedUser = await prisma.user.update({
+      where: {
+        id: userId,
+      },
+
+      data: {
+        address,
+        city,
+        state,
+        pincode,
+        latitude,
+        longitude,
+      },
+
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+
+        address: true,
+        city: true,
+        state: true,
+        pincode: true,
+        latitude: true,
+        longitude: true,
+
+        updatedAt: true,
+      },
+    });
+    
+    
+    res.status(200).json({
+      success: true,
+      message: "Address updated successfully",
+      user: updatedUser,
+    });
+
+    
+  } catch (error) {
+    console.error("Update address error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+    
+  }

@@ -29,9 +29,42 @@ model User{
 
  resetOtp String?
  resetOtpExpireAt DateTime?
+ address  String?
+ city     String?
+ state    String?
+ pincode  String?
+
+ latitude Float?
+ longitude Float?
+
 
  createdAt DateTime  @default(now())
  updatedAt DateTime  @updatedAt   
 
  @@map("users")    
+}
+
+model Product {
+  id          String   @id @default(uuid())
+
+  name        String
+  description String?
+
+  price       Decimal  @db.Decimal(10, 2)
+  stock       Int      @default(0)
+
+  category    String
+
+  material    String?
+  color       String?
+  dimensions  String?
+
+  images      String[]
+
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("products")
 }
