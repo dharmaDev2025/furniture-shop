@@ -26,9 +26,11 @@ model User{
  googleId String?   @unique
  role     Role      @default(CUSTOMER)
  isActive Boolean   @default(true)
-
+  orders   Order[]
  resetOtp String?
  resetOtpExpireAt DateTime?
+ adminLoginOtp          String?
+adminLoginOtpExpiresAt DateTime?
  address  String?
  city     String?
  state    String?
@@ -67,4 +69,59 @@ model Product {
   updatedAt   DateTime @updatedAt
 
   @@map("products")
+}
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  OUT_FOR_DELIVERY
+  DELIVERED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+enum PaymentMethod {
+  COD
+  ONLINE
+}
+
+model Order {
+  id            String        @id @default(uuid())
+  orderNumber   String        @unique
+
+ 
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+
+
+  items         Json
+
+  totalAmount   Decimal       @db.Decimal(10, 2)
+
+  
+  orderStatus   OrderStatus   @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentMethod PaymentMethod
+
+
+  address       String
+  city          String
+  state         String
+  pincode       String
+
+
+  latitude      Float?
+  longitude     Float?
+
+ 
+  billUrl       String?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("orders")
 }

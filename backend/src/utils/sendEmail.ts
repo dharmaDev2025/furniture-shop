@@ -14,12 +14,29 @@ const transporter = nodemailer.createTransport({
 export const sendEmail = async (
   to: string,
   subject: string,
-  html: string
+  html: string,
+  attachment?: Buffer,
+  filename?: string
 ): Promise<void> => {
+
   await transporter.sendMail({
-    from: `"Furniture Shop" <${process.env.EMAIL_USER}>`,
-    to,
-    subject,
-    html,
+    from: `"Nilamadhamb Furniture" <${process.env.EMAIL_USER}>`,
+
+    to: to,
+
+    subject: subject,
+
+    html: html,
+
+    attachments:
+      attachment && filename
+        ? [
+            {
+              filename: filename,
+              content: attachment,
+              contentType: "application/pdf",
+            },
+          ]
+        : [],
   });
 };

@@ -4,6 +4,7 @@ import prisma from "../config/prisma.js";
 import jwt from "jsonwebtoken";
 import { sendEmail } from "../utils/sendEmail.js";
 import { OAuth2Client } from "google-auth-library";
+import crypto from "crypto";
 export const registerUser = async (
   req: Request,
   res: Response
@@ -646,4 +647,208 @@ export const resendResetOtp = async (
   }
 };
 
+
+export const adminLogin = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+      return;
+    }
+
+    const admin = await prisma.user.findUnique({
+      where: {
+        email: email.toLowerCase(),
+      },
+    });
+
+    if (!admin || admin.role !== "ADMIN" || !admin.password) {
+      res.status(401).json({
+        success: false,
+        message: "Invalid admin credentials",
+      });
+      return;
+    }
+
+    if (!admin.isActive) {
+      res.status(403).json({
+        success: false,
+        message: "Admin account is inactive",
+      });
+      return;
+    }
+
+    const isPasswordCorrect = await bcrypt.compare(
+      password,
+      admin.password
+    );
+
+    if (!isPasswordCorrect) {
+      res.status(401).json({
+        success: false,
+        message: "Invalid admin credentials",
+      });
+      return;
+    }
+
+    // Generate 6-digit OTP
+    const otp = crypto.randomInt(100000, 1000000).toString();
+
+    // Hash OTP before storing it
+    const hashedOtp = await bcrypt.hash(otp, 10);
+
+    // OTP expires after 5 minutes
+    const otpExpiresAt = new Date(
+      Date.now() + 5 * 60 * 1000
+    );
+
+    await prisma.user.update({
+      where: {
+        id: admin.id,
+      },
+      data: {
+        adminLoginOtp: hashedOtp,
+        adminLoginOtpExpiresAt: otpExpiresAt,
+      },
+    });
+
+    await sendEmail(
+      admin.email,
+      "Admin Login OTP - Nilamadhamb Furniture",
+      `
+        <h2>Admin Login Verification</h2>
+        <p>Your OTP is:</p>
+        <h1>${otp}</h1>
+        <p>This OTP expires in 5 minutes.</p>
+      `
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "OTP sent to admin email",
+    });
+
+  } catch (error) {
+    console.error("Admin login error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+export const verifyAdminLoginOtp = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      res.status(400).json({
+        success: false,
+        message: "Email and OTP are required",
+      });
+      return;
+    }
+
+    const admin = await prisma.user.findUnique({
+      where: {
+        email: email.toLowerCase(),
+      },
+    });
+
+    if (
+      !admin ||
+      admin.role !== "ADMIN" ||
+      !admin.adminLoginOtp ||
+      !admin.adminLoginOtpExpiresAt
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid or expired OTP",
+      });
+      return;
+    }
+
+    // Check expiry
+    if (new Date() > admin.adminLoginOtpExpiresAt) {
+      res.status(400).json({
+        success: false,
+        message: "OTP has expired",
+      });
+      return;
+    }
+
+    // Compare entered OTP with hashed OTP
+    const isOtpCorrect = await bcrypt.compare(
+      otp.toString(),
+      admin.adminLoginOtp
+    );
+
+    if (!isOtpCorrect) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+      return;
+    }
+
+    const jwtSecret = process.env.JWT_SECRET;
+
+    if (!jwtSecret) {
+      throw new Error("JWT_SECRET is not defined");
+    }
+
+    // OTP is correct → remove it
+    await prisma.user.update({
+      where: {
+        id: admin.id,
+      },
+      data: {
+        adminLoginOtp: null,
+        adminLoginOtpExpiresAt: null,
+      },
+    });
+
+    // NOW generate admin JWT
+    const token = jwt.sign(
+      {
+        userId: admin.id,
+        role: admin.role,
+      },
+      jwtSecret,
+      {
+        expiresIn: "7d",
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Admin login successful",
+      token: token,
+      user: {
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+      },
+    });
+
+  } catch (error) {
+    console.error("Verify admin OTP error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
 
